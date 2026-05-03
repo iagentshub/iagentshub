@@ -62,20 +62,20 @@ get_port() {
 
 inject_github_token() {
   # Lee GITHUB_TOKEN del .env si no viene ya del entorno
-  local token="${GITHUB_TOKEN:-$(grep -E '^GITHUB_TOKEN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')}"
+  local token="${GITHUB_TOKEN:-$(grep -E '^GITHUB_TOKEN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || true)}"
   [[ -z "$token" ]] && return
 
   local backend_repo frontend_repo skills_repo agents_repo
-  backend_repo="$(grep -E '^BACKEND_REPO=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')"
-  frontend_repo="$(grep -E '^FRONTEND_REPO=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')"
-  skills_repo="$(grep -E '^SKILLS_REPO=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')"
-  agents_repo="$(grep -E '^AGENTS_REPO=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')"
+  backend_repo="$(grep -E '^BACKEND_REPO=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || true)"
+  frontend_repo="$(grep -E '^FRONTEND_REPO=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || true)"
+  skills_repo="$(grep -E '^SKILLS_REPO=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || true)"
+  agents_repo="$(grep -E '^AGENTS_REPO=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || true)"
 
   # Inserta el token en las URLs https:// → https://<token>@
   export BACKEND_REPO="${backend_repo/https:\/\//https://${token}@}"
   export FRONTEND_REPO="${frontend_repo/https:\/\//https://${token}@}"
   export SKILLS_REPO="${skills_repo/https:\/\//https://${token}@}"
-  export AGENTS_REPO="${agents_repo/https:\/\//https://${token}@}"
+  if [[ -n "$agents_repo" ]]; then export AGENTS_REPO="${agents_repo/https:\/\//https://${token}@}"; fi
 }
 
 # ── comandos ──────────────────────────────────────────────────────────────────
@@ -86,6 +86,7 @@ cmd_start() {
   inject_github_token
   if $DEV; then info "Modo desarrollo — usando repos locales"; fi
   info "Construyendo e iniciando servicios..."
+  $COMPOSE rm -f data-init 2>/dev/null || true
   $COMPOSE up -d --build
   PORT=$(get_port)
   echo
@@ -114,6 +115,7 @@ cmd_update() {
   inject_github_token
   if $DEV; then info "Modo desarrollo — usando repos locales"; fi
   info "Actualizando a la última versión..."
+  $COMPOSE rm -f data-init 2>/dev/null || true
   $COMPOSE down
   $COMPOSE up -d --build
   PORT=$(get_port)

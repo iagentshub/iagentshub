@@ -64,3 +64,11 @@ Esta separación permite gestionar el contenido con la misma trazabilidad que el
 Todos los datos de la plataforma —configuración, agentes, memoria, claves de API, skills— se almacenan en el directorio `data/` del host. Este directorio sobrevive a reinicios, actualizaciones y reconstrucciones del sistema.
 
 Las skills se sincronizan en cada arranque desde el repositorio de skills. El resto de los datos se conservan entre arranques sin intervención manual.
+
+---
+
+## Memoria activa de los agentes
+
+Cuando un agente tiene la memoria activada, el sistema genera y mantiene automáticamente un fichero de memoria para ese agente. Tras cada conversación, el backend actualiza ese fichero con los hechos relevantes extraídos del diálogo: preferencias del usuario, contexto del proyecto, decisiones tomadas y cualquier dato que el agente deba recordar en futuras sesiones.
+
+En la siguiente conversación, el contenido de ese fichero se incorpora al contexto del agente de forma automática, sin intervención del usuario.

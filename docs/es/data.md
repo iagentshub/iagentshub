@@ -19,7 +19,7 @@ Todos los datos de la plataforma se almacenan en el directorio `data/` del host.
 | `users.json` | Cuentas de usuario creadas mediante autenticación |
 | `agents/` | Configuraciones de los agentes (instrucciones, personalidad, skills asignadas) |
 | `connections/` | Claves de API de los proveedores de IA |
-| `memory/` | Memoria acumulada por cada agente entre conversaciones |
+| `memory/` | Ficheros de memoria de cada agente. Se crean y actualizan automáticamente tras cada conversación cuando el agente tiene la memoria activada. |
 | `skills/` | Skills sincronizadas desde el repositorio de skills en cada arranque |
 
 ---

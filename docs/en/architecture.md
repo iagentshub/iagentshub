@@ -64,3 +64,11 @@ This separation allows managing content with the same traceability as code, with
 All platform data — configuration, agents, memory, API keys, skills — is stored in the `data/` directory on the host. This directory survives restarts, updates, and rebuilds.
 
 Skills are synced on every startup from the skills repository. All other data is preserved between startups without manual intervention.
+
+---
+
+## Active agent memory
+
+When an agent has memory enabled, the system automatically creates and maintains a memory file for that agent. After each conversation, the backend updates that file with the relevant facts extracted from the dialogue: user preferences, project context, decisions made, and any information the agent should recall in future sessions.
+
+In the next conversation, the contents of that file are automatically incorporated into the agent’s context, with no user intervention required.

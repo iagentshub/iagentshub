@@ -13,8 +13,14 @@ services:
   # En dev, data-init copia skills y agentes desde repos locales en vez de clonar GitHub.
   data-init:
     volumes:
-      - ${DEV_SKILLS_REPO:-../skills}:/skills-src:ro
-      - ${DEV_AGENTS_REPO:-../agents}:/agents-src:ro
+      - type: bind
+        source: ${DEV_SKILLS_REPO:-../skills}
+        target: /skills-src
+        read_only: true
+      - type: bind
+        source: ${DEV_AGENTS_REPO:-../agents}
+        target: /agents-src
+        read_only: true
     command:
       - /bin/sh
       - -c
@@ -36,7 +42,14 @@ services:
           cp -r /skills-src/public/. /data/skills/public/
         fi
         rm -rf /data/agents/public/*
-        cp -r /agents-src/public/. /data/agents/public/
+        AGENTS_SRC="/agents-src/public/$$SKILLS_LANG"
+        if [ -d "$$AGENTS_SRC" ]; then
+          cp -r "$$AGENTS_SRC"/. /data/agents/public/
+        elif [ -d /agents-src/public ]; then
+          cp -r /agents-src/public/. /data/agents/public/
+        else
+          cp -r /agents-src/. /data/agents/public/
+        fi
         echo '[data-init] Listo.'
 
   backend:
