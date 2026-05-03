@@ -5,3 +5,8 @@ users.json
 # Directorios gestionados por data-init (nunca versionar)
 skills/public/
 skills/private/
+
+# Datos de runtime (generados en ejecución)
+connections/
+agents/
+memory/
