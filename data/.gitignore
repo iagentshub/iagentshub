@@ -2,19 +2,13 @@
 settings.json
 users.json
 
-<<<<<<< Updated upstream
 # Directorios gestionados por data-init (nunca versionar)
 skills/public/
 skills/private/
 
-# Datos de runtime (generados en ejecución)
-connections/
-agents/
-memory/
-=======
 # Directorios de datos en tiempo de ejecución — nunca versionar
 agents/
 connections/
 memory/
 skills/
->>>>>>> Stashed changes
+accounts/
