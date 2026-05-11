@@ -86,8 +86,11 @@ services:
   backend:
     build:
       context: /tmp
+      args:
+        CACHE_BUST: "2026-05-11"
       dockerfile_inline: |
         FROM alpine/git AS source
+        ARG CACHE_BUST
         RUN git clone --depth=1 --branch main https://github.com/iagentshub/backend.git /repo
 
         FROM python:3.12-slim AS builder
@@ -127,8 +130,11 @@ services:
   frontend:
     build:
       context: /tmp
+      args:
+        CACHE_BUST: "2026-05-11"
       dockerfile_inline: |
         FROM alpine/git AS source
+        ARG CACHE_BUST
         RUN git clone --depth=1 --branch main https://github.com/iagentshub/frontend.git /repo
 
         FROM nginx:alpine
