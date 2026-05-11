@@ -88,6 +88,7 @@ services:
   # El frontend nginx sirve los ficheros del volumen directamente.
   code-sync:
     image: alpine/git:2.52.0
+    entrypoint: []
     restart: unless-stopped
     volumes:
       - iagentshub_backend:/backend
@@ -171,7 +172,7 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8765/api/auth/me')" ]
+      test: ["CMD", "python", "-c", "import http.client; c=http.client.HTTPConnection('localhost',8765,timeout=5); c.request('GET','/api/auth/me'); r=c.getresponse(); exit(0 if r.status<500 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
