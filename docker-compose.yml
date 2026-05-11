@@ -87,7 +87,7 @@ services:
     build:
       context: /tmp
       args:
-        CACHE_BUST: "2026-05-11"
+        CACHE_BUST: "2026-05-12"
       dockerfile_inline: |
         FROM alpine/git AS source
         ARG CACHE_BUST
@@ -131,7 +131,7 @@ services:
     build:
       context: /tmp
       args:
-        CACHE_BUST: "2026-05-11"
+        CACHE_BUST: "2026-05-12"
       dockerfile_inline: |
         FROM alpine/git AS source
         ARG CACHE_BUST
