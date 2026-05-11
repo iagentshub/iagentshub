@@ -1,12 +1,13 @@
 # iAgents Hub — Despliegue con Docker
 #
-# Solo necesitas este fichero. Backend, frontend y skills se obtienen
-# automáticamente desde GitHub en cada `docker compose up --build`.
+# Solo necesitas este fichero. El servicio code-sync mantiene el código
+# actualizado desde GitHub cada SYNC_INTERVAL segundos — sin reconstruir
+# la imagen ni tocar el YAML.
 #
 # ── Variables a revisar antes de desplegar ───────────────────────────────────
 # GAIA_AGENTS_SECRET  → cambia el valor por una cadena aleatoria segura
-# PORT                → puerto en el que se expone la app (por defecto 80)
 # SKILLS_LANG         → idioma de las skills: es | en
+# SYNC_INTERVAL       → segundos entre sincronizaciones de código (default: 3600)
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -81,16 +82,65 @@ services:
         echo '[data-init] Listo.'
     restart: "no"
 
+  # ── Code sync: mantiene backend y frontend actualizados desde GitHub ────────
+  # Corre continuamente: sincroniza en el arranque y luego cada SYNC_INTERVAL s.
+  # El backend (uvicorn --reload) recarga ficheros automáticamente.
+  # El frontend nginx sirve los ficheros del volumen directamente.
+  code-sync:
+    image: alpine/git:2.52.0
+    restart: unless-stopped
+    volumes:
+      - iagentshub_backend:/backend
+      - iagentshub_frontend:/frontend
+    environment:
+      BACKEND_REPO: "https://github.com/iagentshub/backend.git"
+      FRONTEND_REPO: "https://github.com/iagentshub/frontend.git"
+      SYNC_INTERVAL: "3600"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        sync_repo() {
+          REPO="$$1"
+          DIR="$$2"
+          if [ -d "$$DIR/.git" ]; then
+            git -C "$$DIR" fetch --depth=1 origin main 2>&1 && \
+            git -C "$$DIR" reset --hard FETCH_HEAD 2>&1 && \
+            echo "[code-sync] $$DIR actualizado ($$( git -C $$DIR rev-parse --short HEAD ))"
+          else
+            git clone --depth=1 --branch main "$$REPO" "$$DIR" && \
+            echo "[code-sync] $$DIR clonado ($$( git -C $$DIR rev-parse --short HEAD ))"
+          fi
+        }
+
+        echo '[code-sync] Sincronización inicial...'
+        sync_repo "$$BACKEND_REPO" /backend
+        sync_repo "$$FRONTEND_REPO" /frontend
+        echo "[code-sync] Lista. Próxima sync en $$SYNC_INTERVAL s."
+
+        while true; do
+          sleep "$$SYNC_INTERVAL"
+          echo '[code-sync] Sincronizando...'
+          sync_repo "$$BACKEND_REPO" /backend
+          sync_repo "$$FRONTEND_REPO" /frontend
+        done
+    healthcheck:
+      test: ["CMD", "test", "-f", "/backend/main.py"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
   # ── Backend (FastAPI + uvicorn) ────────────────────────────────────────────
-  # Docker descarga el repo desde GitHub en cada --build → siempre actualizado.
+  # La imagen solo contiene Python + dependencias.
+  # El código de la app viene del volumen iagentshub_backend (gestionado por code-sync).
+  # GAIA_RELOAD=true → uvicorn detecta cambios en disco y recarga sin reiniciar.
+  # Si requirements.txt cambia, reconstruye la imagen (docker compose up --build backend).
   backend:
     build:
       context: /tmp
-      args:
-        CACHE_BUST: "2026-05-12"
       dockerfile_inline: |
         FROM alpine/git AS source
-        ARG CACHE_BUST
         RUN git clone --depth=1 --branch main https://github.com/iagentshub/backend.git /repo
 
         FROM python:3.12-slim AS builder
@@ -101,21 +151,22 @@ services:
         FROM python:3.12-slim
         WORKDIR /app
         COPY --from=builder /install /usr/local
-        COPY --from=source /repo/ .
         EXPOSE 8765
-        ENV GAIA_RELOAD=false
         CMD ["python", "main.py"]
     environment:
       GAIA_DATA_DIR: "/data"
-      GAIA_RELOAD: "false"
+      GAIA_RELOAD: "true"
       GAIA_HOST: "0.0.0.0"
       GAIA_PORT: "8765"
       GAIA_CORS_ORIGINS: "http://localhost"
       # ↓ CAMBIA ESTO por una cadena aleatoria segura (openssl rand -hex 32)
       GAIA_AGENTS_SECRET: "263628a10976a4b85ef1bd4809587fbfc94c38f92c9b7a4474cfad3084585408"
     volumes:
+      - iagentshub_backend:/app
       - iagentshub_data:/data
     depends_on:
+      code-sync:
+        condition: service_healthy
       data-init:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -124,29 +175,36 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 30s
 
   # ── Frontend (nginx sirviendo estáticos + proxy /api/) ────────────────────
+  # La imagen es nginx vacío. Los ficheros estáticos y nginx.conf vienen del
+  # volumen iagentshub_frontend (gestionado por code-sync).
+  # nginx sirve los ficheros directamente del volumen → los cambios son instantáneos.
+  # Nota: si nginx.conf cambia, reinicia este contenedor para que lo recargue.
   frontend:
     build:
       context: /tmp
-      args:
-        CACHE_BUST: "2026-05-12"
       dockerfile_inline: |
-        FROM alpine/git AS source
-        ARG CACHE_BUST
-        RUN git clone --depth=1 --branch main https://github.com/iagentshub/frontend.git /repo
-
         FROM nginx:alpine
         RUN rm -f /usr/share/nginx/html/index.html /usr/share/nginx/html/50x.html
-        COPY --from=source /repo/ /usr/share/nginx/html
-        COPY --from=source /repo/nginx.conf /etc/nginx/conf.d/default.conf
         EXPOSE 80
+    command:
+      - sh
+      - -c
+      - "cp /usr/share/nginx/html/nginx.conf /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+    volumes:
+      - iagentshub_frontend:/usr/share/nginx/html
     ports:
       - "8007:80"
     depends_on:
-      - backend
+      code-sync:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   iagentshub_data:
+  iagentshub_backend:
+  iagentshub_frontend:
