@@ -1,11 +1,13 @@
 # iAgents Hub — Despliegue con Docker
 #
-# Solo necesitas este repositorio. Backend, frontend y skills se obtienen
+# Solo necesitas este fichero. Backend, frontend y skills se obtienen
 # automáticamente desde GitHub en cada `docker compose up --build`.
 #
-# Uso rápido:
-#   cp .env.example .env    # ajustar valores
-#   docker compose up -d --build
+# ── Variables a revisar antes de desplegar ───────────────────────────────────
+# GAIA_AGENTS_SECRET  → cambia el valor por una cadena aleatoria segura
+# PORT                → puerto en el que se expone la app (por defecto 80)
+# SKILLS_LANG         → idioma de las skills: es | en
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
 
@@ -17,11 +19,11 @@ services:
     image: alpine/git:2.52.0
     entrypoint: []
     volumes:
-      - ./data:/data
+      - iagentshub_data:/data
     environment:
-      SKILLS_REPO:          "${SKILLS_REPO:-https://github.com/iagentshub/skills.git}"
-      SKILLS_LANG:          "${SKILLS_LANG:-es}"
-      AGENTS_REPO:          "${AGENTS_REPO:-https://github.com/iagentshub/agents.git}"
+      SKILLS_REPO: "https://github.com/iagentshub/skills.git"
+      SKILLS_LANG: "es"
+      AGENTS_REPO: "https://github.com/iagentshub/agents.git"
     command:
       - /bin/sh
       - -c
@@ -83,25 +85,39 @@ services:
   # Docker descarga el repo desde GitHub en cada --build → siempre actualizado.
   backend:
     build:
-      context: "${BACKEND_REPO:-https://github.com/iagentshub/backend.git}"
+      context: /tmp
+      dockerfile_inline: |
+        FROM alpine/git AS source
+        RUN git clone --depth=1 --branch main https://github.com/iagentshub/backend.git /repo
+
+        FROM python:3.12-slim AS builder
+        WORKDIR /build
+        COPY --from=source /repo/requirements.txt .
+        RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+        FROM python:3.12-slim
+        WORKDIR /app
+        COPY --from=builder /install /usr/local
+        COPY --from=source /repo/ .
+        EXPOSE 8765
+        ENV GAIA_RELOAD=false
+        CMD ["python", "main.py"]
     environment:
-      GAIA_DATA_DIR:      /data
-      GAIA_RELOAD:        "false"
-      GAIA_HOST:          "0.0.0.0"
-      GAIA_PORT:          "8765"
-      # El CORS no es necesario porque nginx hace de proxy en el mismo origen,
-      # pero se deja configurado por si alguien accede al backend directamente.
-      GAIA_CORS_ORIGINS:  "${GAIA_CORS_ORIGINS:-http://localhost}"
-      # Secreto JWT: establecer en .env; si no, se usa el de data/settings.json
-      GAIA_AGENTS_SECRET: "${GAIA_AGENTS_SECRET:-}"
+      GAIA_DATA_DIR: "/data"
+      GAIA_RELOAD: "false"
+      GAIA_HOST: "0.0.0.0"
+      GAIA_PORT: "8765"
+      GAIA_CORS_ORIGINS: "http://localhost"
+      # ↓ CAMBIA ESTO por una cadena aleatoria segura (openssl rand -hex 32)
+      GAIA_AGENTS_SECRET: "263628a10976a4b85ef1bd4809587fbfc94c38f92c9b7a4474cfad3084585408"
     volumes:
-      - ./data:/data:rw
+      - iagentshub_data:/data
     depends_on:
       data-init:
         condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8765/api/auth/me')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8765/api/auth/me')" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -110,9 +126,21 @@ services:
   # ── Frontend (nginx sirviendo estáticos + proxy /api/) ────────────────────
   frontend:
     build:
-      context: "${FRONTEND_REPO:-https://github.com/iagentshub/frontend.git}"
+      context: /tmp
+      dockerfile_inline: |
+        FROM alpine/git AS source
+        RUN git clone --depth=1 --branch main https://github.com/iagentshub/frontend.git /repo
+
+        FROM nginx:alpine
+        RUN rm -f /usr/share/nginx/html/index.html /usr/share/nginx/html/50x.html
+        COPY --from=source /repo/ /usr/share/nginx/html
+        COPY --from=source /repo/nginx.conf /etc/nginx/conf.d/default.conf
+        EXPOSE 80
     ports:
-      - "${PORT:-80}:80"
+      - "8007:80"
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  iagentshub_data:
