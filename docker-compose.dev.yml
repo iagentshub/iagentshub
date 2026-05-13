@@ -57,6 +57,10 @@ services:
       context: "${DEV_BACKEND_REPO:-../backend}"
     environment:
       GAIA_RELOAD: "true"
+    volumes:
+      - type: bind
+        source: ${DEV_BACKEND_REPO:-../backend}
+        target: /app
 
   frontend:
     build:
