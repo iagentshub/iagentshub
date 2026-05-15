@@ -132,6 +132,22 @@ services:
       retries: 30
       start_period: 30s
 
+  # ── PostgreSQL (opcional — se activa cuando DATABASE_URL apunta a él) ──────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: iagentshub
+      POSTGRES_USER: gaia
+      POSTGRES_PASSWORD: "${GAIA_DB_PASSWORD:-changeme}"
+    volumes:
+      - iagentshub_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gaia -d iagentshub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── Backend (FastAPI + uvicorn) ────────────────────────────────────────────
   # La imagen solo contiene Python + dependencias.
   # El código de la app viene del volumen iagentshub_backend (gestionado por code-sync).
@@ -174,6 +190,9 @@ services:
       GAIA_GOOGLE_CLIENT_SECRET: ""
       GAIA_GOOGLE_REDIRECT_URI: ""
       GAIA_ALLOWED_EMAILS: ""
+      # postgresql://gaia:password@postgres:5432/iagentshub — leave empty for SQLite
+      DATABASE_URL: ""
+      GAIA_DB_PASSWORD: ""
     volumes:
       - iagentshub_backend:/app
       - iagentshub_data:/data
@@ -182,6 +201,8 @@ services:
         condition: service_healthy
       data-init:
         condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import http.client; c=http.client.HTTPConnection('localhost',8765,timeout=5); c.request('GET','/api/auth/me'); r=c.getresponse(); exit(0 if r.status<500 else 1)"]
@@ -221,3 +242,4 @@ volumes:
   iagentshub_data:
   iagentshub_backend:
   iagentshub_frontend:
+  iagentshub_postgres:
