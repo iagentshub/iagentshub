@@ -1,8 +1,8 @@
 # docker-compose.dev.yml — Overrides para desarrollo local
 #
-# Usa rutas locales en lugar de GitHub para backend, frontend y skills.
-# Las rutas son relativas a este fichero (por defecto ../backend, ../frontend y ../skills).
-# Se pueden sobreescribir en .env con DEV_BACKEND_REPO, DEV_FRONTEND_REPO y DEV_SKILLS_REPO.
+# Usa rutas locales en lugar de GitHub para backend, frontend, skills y agentes.
+# Las rutas son relativas a este fichero (por defecto ../backend, ../frontend, etc.).
+# Se pueden sobreescribir en .env con las variables DEV_*_REPO.
 #
 # Uso:
 #   ./gaia.sh start --dev
@@ -52,19 +52,59 @@ services:
         fi
         echo '[data-init] Listo.'
 
+  # En dev, code-sync no clona desde GitHub: simplemente deja el volumen listo
+  # para que el healthcheck que espera backend y frontend pueda pasar.
+  code-sync:
+    command:
+      - /bin/sh
+      - -c
+      - "echo '[code-sync] dev mode: sin sync de GitHub.'"
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  # Backend: imagen construida desde el repo local, código montado como bind mount.
+  # El bind mount sobreescribe el volumen nombrado en /app — el código local siempre gana.
+  # code-sync se sobreescribe a service_completed_successfully porque en dev sale inmediatamente.
   backend:
+    depends_on:
+      code-sync:
+        condition: service_completed_successfully
     build:
       context: "${DEV_BACKEND_REPO:-../backend}"
+      dockerfile_inline: |
+        FROM python:3.12-slim AS builder
+        WORKDIR /build
+        COPY requirements.txt .
+        RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+        FROM python:3.12-slim
+        WORKDIR /app
+        COPY --from=builder /install /usr/local
+        EXPOSE 8765
+        CMD ["python", "main.py"]
     environment:
       GAIA_RELOAD: "true"
+      GAIA_REGISTRATION: "open"
+      GAIA_ADMIN_EMAIL: "andresdavidh11@gmail.com"
+      GAIA_ADMIN_RESET: ""
     volumes:
       - type: bind
         source: ${DEV_BACKEND_REPO:-../backend}
         target: /app
 
+  # Frontend: imagen nginx construida desde el repo local, ficheros estáticos como bind mount.
+  # El bind mount sobreescribe el volumen nombrado en /usr/share/nginx/html.
   frontend:
+    depends_on:
+      code-sync:
+        condition: service_completed_successfully
     build:
       context: "${DEV_FRONTEND_REPO:-../frontend}"
+      dockerfile_inline: |
+        FROM nginx:alpine
+        RUN rm -f /usr/share/nginx/html/index.html /usr/share/nginx/html/50x.html
+        EXPOSE 80
     volumes:
       - type: bind
         source: ${DEV_FRONTEND_REPO:-../frontend}

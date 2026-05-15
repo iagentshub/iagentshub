@@ -25,6 +25,32 @@ La configuración se establece en un fichero de variables de entorno en la raíz
 
 ---
 
+## Administrador inicial
+
+En el primer arranque, si no existe ningún usuario con rol `admin`, el backend crea uno automáticamente y muestra las credenciales en los logs del servicio:
+
+```
+docker logs iagentshub-backend-1 2>&1 | grep -A6 "Administrador"
+```
+
+Las variables que controlan este comportamiento son:
+
+| Variable | Valor por defecto | Descripción |
+|---|---|---|
+| `GAIA_ADMIN_EMAIL` | `admin@localhost` | Email (y nombre de usuario) de la cuenta administrador inicial. |
+| `GAIA_ADMIN_RESET` | *(vacío)* | Pon `true` para resetear la contraseña del admin en el próximo arranque. **Quitar después del arranque.** |
+
+---
+
+## Registro de cuentas
+
+| Variable | Opciones | Descripción |
+|---|---|---|
+| `GAIA_REGISTRATION` | `open` / `closed` / `invite` | Controla quién puede crear nuevas cuentas. `invite` (por defecto) requiere que un administrador cree la cuenta manualmente. |
+| `GAIA_EMAIL_VERIFY` | `false` / `true` | Si `true`, los nuevos usuarios reciben un correo de verificación antes de poder acceder. Requiere configuración SMTP (pendiente). |
+
+---
+
 ## Secreto de sesión
 
 Debe generarse de forma aleatoria antes del primer arranque y no cambiarse mientras haya sesiones activas. Si no se define, el sistema usa un valor de emergencia almacenado en los datos de la plataforma — aceptable en desarrollo, no en producción.

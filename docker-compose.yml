@@ -181,8 +181,14 @@ services:
       # ↓ Genera con: openssl rand -hex 32  — NUNCA dejes este valor en el YAML público
       GAIA_AGENTS_SECRET: ""
       # ── Seguridad ────────────────────────────────────────────────────────────
+      # Email del administrador inicial (se crea automáticamente si no existe ningún admin)
+      GAIA_ADMIN_EMAIL: "admin@localhost"
+      # Pon "true" para resetear la contraseña del admin en el próximo arranque (quitar después)
+      GAIA_ADMIN_RESET: ""
       # open | closed | invite
       GAIA_REGISTRATION: "invite"
+      # false → usuarios auto-verificados; true → envía correo de verificación
+      GAIA_EMAIL_VERIFY: "false"
       # Máximo de sesiones guest simultáneas
       GAIA_MAX_GUEST_SESSIONS: "200"
       # ── Google OAuth (opcional) ──────────────────────────────────────────────

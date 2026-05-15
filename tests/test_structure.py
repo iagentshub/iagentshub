@@ -89,7 +89,7 @@ def test_settings_json_exists():
 
 def test_settings_json_has_required_keys():
     settings = json.loads((REPO_ROOT / "data" / "settings.json").read_text(encoding="utf-8"))
-    for key in ("admin_username", "jwt_secret"):
+    for key in ("jwt_secret",):
         assert key in settings, f"settings.json no tiene la clave {key!r}"
 
 

@@ -15,6 +15,14 @@ Todo se gestiona con un único script desde la raíz del proyecto.
 
 Clona el repositorio, copia el fichero de configuración de ejemplo, completa los valores necesarios y ejecuta el script de arranque. La plataforma estará disponible en `http://localhost` al finalizar.
 
+El backend crea automáticamente una cuenta administrador la primera vez que arranca. Las credenciales se imprimen en los logs:
+
+```bash
+docker logs iagentshub-backend-1 2>&1 | grep -A6 "Administrador"
+```
+
+Si no las viste en el momento del arranque, puedes obtener una nueva contraseña añadiendo `GAIA_ADMIN_RESET: "true"` al bloque `environment` del servicio `backend` en el compose, reiniciando y leyendo los logs. **Recuerda quitar esa línea después.**
+
 ---
 
 ## Comandos disponibles

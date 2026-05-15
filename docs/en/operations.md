@@ -15,6 +15,14 @@ Everything is managed with a single script from the project root.
 
 Clone the repository, copy the example configuration file, fill in the required values, and run the startup script. The platform will be available at `http://localhost` when it finishes.
 
+The backend automatically creates an administrator account the first time it starts. The credentials are printed to the service logs:
+
+```bash
+docker logs iagentshub-backend-1 2>&1 | grep -A6 "Administrador"
+```
+
+If you missed them at startup, you can generate a new password by adding `GAIA_ADMIN_RESET: "true"` to the `environment` block of the `backend` service in the compose file, restarting, and reading the logs. **Remember to remove that line afterwards.**
+
 ---
 
 ## Available commands
