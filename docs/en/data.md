@@ -22,6 +22,7 @@ All platform data is stored in the `data/` directory on the host. This directory
 | `memory/` | Memory files for each agent. Created and updated automatically after each conversation when the agent has memory enabled. |
 | `skills/` | Skills synced from the skills repository on every startup |
 | `knowledge.db` | SQLite database containing knowledge items (URLs and documents). Text is extracted when the item is saved and injected into the agent's system prompt at chat start. |
+| `logs/` | Daily log files (`YYYYMMDD.log`). Created automatically when `GAIA_DATA_DIR` is set. Accessible from the admin panel → Logs. |
 
 ---
 

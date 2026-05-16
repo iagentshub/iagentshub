@@ -37,6 +37,36 @@ success() { echo -e "${GREEN}${BOLD}[gaia]${RESET} $*"; }
 warn()    { echo -e "${YELLOW}${BOLD}[gaia]${RESET} $*"; }
 error()   { echo -e "${RED}${BOLD}[gaia]${RESET} $*" >&2; exit 1; }
 
+_show_admin_info() {
+  # Wait up to 30 s for the backend container to accept exec
+  local i=0
+  while [ $i -lt 30 ]; do
+    $COMPOSE exec -T backend sh -c 'exit 0' &>/dev/null && break
+    sleep 1; i=$((i+1))
+  done
+
+  local admin_email
+  admin_email=$($COMPOSE exec -T backend sh -c 'printf "%s" "$GAIA_ADMIN_EMAIL"' 2>/dev/null | tr -d '\r\n') || true
+  [ -z "$admin_email" ] && return
+
+  # Read persisted password from .admin_pass (written by the backend on every reset/create)
+  local admin_pass
+  admin_pass=$($COMPOSE exec -T backend sh -c 'cat "$GAIA_DATA_DIR/.admin_pass" 2>/dev/null' 2>/dev/null | tr -d '\r\n') || true
+
+  echo
+  echo -e "${BOLD}  ╔══════════════════════════════════════════╗${RESET}"
+  echo -e "${BOLD}  ║       Acceso de administrador            ║${RESET}"
+  echo -e "${BOLD}  ╠══════════════════════════════════════════╣${RESET}"
+  echo -e "${BOLD}  ║${RESET}  Email      › ${CYAN}${admin_email}${RESET}"
+  if [ -n "$admin_pass" ]; then
+    echo -e "${BOLD}  ║${RESET}  Contraseña › ${GREEN}${admin_pass}${RESET}"
+  else
+    echo -e "${BOLD}  ║${RESET}  Contraseña › (sin cambios)"
+  fi
+  echo -e "${BOLD}  ╚══════════════════════════════════════════╝${RESET}"
+  echo
+}
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 check_docker() {
   command -v docker &>/dev/null || error "Docker no está instalado. Descárgalo en https://docs.docker.com/get-docker/"
@@ -91,6 +121,7 @@ cmd_start() {
   PORT=$(get_port)
   echo
   success "iAgents Hub en marcha → http://localhost:${PORT}"
+  _show_admin_info
 }
 
 cmd_stop() {
@@ -121,6 +152,7 @@ cmd_update() {
   PORT=$(get_port)
   echo
   success "Actualización completada → http://localhost:${PORT}"
+  _show_admin_info
 }
 
 cmd_status() {

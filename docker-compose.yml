@@ -90,6 +90,11 @@ services:
     image: alpine/git:2.52.0
     entrypoint: []
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     volumes:
       - iagentshub_backend:/backend
       - iagentshub_frontend:/frontend
@@ -154,6 +159,11 @@ services:
   # GAIA_RELOAD=true → uvicorn detecta cambios en disco y recarga sin reiniciar.
   # Si requirements.txt cambia, reconstruye la imagen (docker compose up --build backend).
   backend:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "15"
     build:
       context: /tmp
       dockerfile_inline: |
@@ -218,6 +228,11 @@ services:
   # nginx sirve los ficheros directamente del volumen → los cambios son instantáneos.
   # Nota: si nginx.conf cambia, reinicia este contenedor para que lo recargue.
   frontend:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "15"
     build:
       context: /tmp
       dockerfile_inline: |

@@ -15,13 +15,20 @@ Everything is managed with a single script from the project root.
 
 Clone the repository, copy the example configuration file, fill in the required values, and run the startup script. The platform will be available at `http://localhost` when it finishes.
 
-The backend automatically creates an administrator account the first time it starts. The credentials are printed to the service logs:
+The backend automatically creates an administrator account the first time it starts. The script always prints the credentials when `start` or `update` finishes:
 
-```bash
-docker logs iagentshub-backend-1 2>&1 | grep -A6 "Administrador"
+```
+  ╔══════════════════════════════════════════╗
+  ║       Acceso de administrador            ║
+  ╠══════════════════════════════════════════╣
+  ║  Email      › admin@example.com
+  ║  Contraseña › (sin cambios)
+  ╚══════════════════════════════════════════╝
 ```
 
-If you missed them at startup, you can generate a new password by adding `GAIA_ADMIN_RESET: "true"` to the `environment` block of the `backend` service in the compose file, restarting, and reading the logs. **Remember to remove that line afterwards.**
+If a new password was generated (first startup or forced reset), it appears in the _Contraseña_ field. Otherwise _(sin cambios)_ is shown.
+
+To force a password reset, add `GAIA_ADMIN_RESET: "true"` to the `environment` block of the `backend` service in `docker-compose.dev.yml`, run `./gaia.sh update --dev`, and copy the password that appears. **Remove that line immediately afterwards** to prevent accidental resets on future restarts.
 
 ---
 

@@ -64,6 +64,7 @@ goto usage
   call :get_port
   echo.
   echo [gaia] iAgents Hub en marcha -^> http://localhost:%PORT%
+  call :show_admin_info
   goto end
 
 :cmd_stop
@@ -91,6 +92,7 @@ goto usage
   call :get_port
   echo.
   echo [gaia] Actualizacion completada -^> http://localhost:%PORT%
+  call :show_admin_info
   goto end
 
 :cmd_status
@@ -98,6 +100,43 @@ goto usage
   cd /d "%SCRIPT_DIR%"
   %COMPOSE% ps
   goto end
+
+:show_admin_info
+  set "SAI_EMAIL="
+  set "SAI_PASS="
+  set "SAI_TRIES=0"
+  :_sai_wait
+  docker compose exec -T backend sh -c "exit 0" >nul 2>&1
+  if !errorlevel! equ 0 goto _sai_get
+  if !SAI_TRIES! geq 30 goto _sai_print
+  timeout /t 1 /nobreak >nul
+  set /a SAI_TRIES+=1
+  goto _sai_wait
+
+  :_sai_get
+  for /f "usebackq delims=" %%E in (`docker compose exec -T backend sh -c "echo $GAIA_ADMIN_EMAIL" 2^>nul`) do (
+    if not defined SAI_EMAIL set "SAI_EMAIL=%%E"
+  )
+  for /f "usebackq delims=" %%P in (`docker compose exec -T backend sh -c "cat $GAIA_DATA_DIR/.admin_pass 2>/dev/null" 2^>nul`) do set "SAI_PASS=%%P"
+
+  :_sai_print
+  echo.
+  echo   +------------------------------------------+
+  echo   ^|      Acceso de administrador             ^|
+  echo   +------------------------------------------+
+  if defined SAI_EMAIL (
+    echo   ^|  Email      : !SAI_EMAIL!
+  ) else (
+    echo   ^|  Email      : (no disponible)
+  )
+  if defined SAI_PASS (
+    echo   ^|  Contrasena : !SAI_PASS!
+  ) else (
+    echo   ^|  Contrasena : (sin cambios)
+  )
+  echo   +------------------------------------------+
+  echo.
+  exit /b 0
 
 :usage
   echo.
